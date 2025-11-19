@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     if (!query) {
       return res.json({
         status: "error",
-        message: "اكتب كلمة البحث — ?query= BY  MONTE"
+        message: "اكتب كلمة البحث — ?query="
       });
     }
 
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     if (ids.size === 0) {
       return res.json({
         status: "error",
-        message: "لم يتم العثور على أي صور"
+        message: "لم يتم العثور على صور"
       });
     }
 
@@ -42,7 +42,6 @@ export default async function handler(req, res) {
       count: images.length,
       results: images
     });
-
   } catch (err) {
     res.json({
       status: "error",
