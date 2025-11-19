@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/wallhaven.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/wallhaven",
+      "dest": "/api/wallhaven.js"
+    }
+  ]
+}
