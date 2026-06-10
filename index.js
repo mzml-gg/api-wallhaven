@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({
         success: false,
         creator: "By Arab Top Dev",
-        error: 'يرجى كتابة نص البحث في معامل q أو prompt'
+        error: 'يرجى كتابة تتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتتت نص البحث في معامل q أو prompt'
       });
     }
 
