@@ -1,18 +1,18 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-  // إعدادات الـ CORS الكاملة لتفادي مشاكل الحظر في المواقع والبوتات
+  // إعدادات الـ CORS الكاملة لتفادي مشاكل الحظر في المتصفحات والبوتات
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // معالجة طلبات التحقق المسبق (Preflight Request)
+  // معالجة طلبات التحقق المسبق (Preflight OPTIONS)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    // جلب المعامل q أو prompt من الرابط ديناميكياً
+    // جلب اسم الأغنية من المعامل q أو prompt
     const query = req.query.q || req.query.prompt;
 
     if (!query) {
@@ -23,7 +23,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // الهيدرز الحية التي اصطدتها من الـ CMD اليوم
+    // الرابط المباشر المستقر الذي نجح في أداة بايثون
+    const url = "https://api-partner.spotify.com/pathfinder/v1/query";
+
+    // الهيدرز الحية والشغالة 100%
     const headers = {
       'accept': 'application/json',
       'accept-language': 'ar',
@@ -32,12 +35,11 @@ module.exports = async (req, res) => {
       'client-token': 'AAAnMmsK258ommRyhCEglhWQ1RazmM/Zh69/+deNzo/B/G/iDWoons4tv02En0pPJje7i7ElOKw5uJtVlrNTgojx49YCuNP4p/bpNxbao4CPIkx99WmwqrYlwgYJ1ua5vl2+r5cz0beI7rZo6/otxNso1fy9iX/CCMdrS9CHRK0TnwV57Huyw5XotTgUi8Bf9yN7R4VVKH+5uxdY6EWmvXPa2BkobNjUq33RUjEXYNPwtQg/LXdXM90wUjHny7PHpWaedr2y3rtkranbPAQcS8rMFKvhUs2IdAzJ0NqqZCvBuhA8x2H9XGpL4NnJJ3T0qD6aQ6f4982C6CQa/M6nLHn8ZPtqTmE1BkNQ',
       'content-type': 'application/json;charset=UTF-8',
       'origin': 'https://open.spotify.com',
-      'referer': 'https://open.spotify.com/^',
-      'spotify-app-version': '1.2.93.77.g42a4656f',
+      'referer': 'https://open.spotify.com/',
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36'
     };
 
-    // الـ Payload الموجه لسيرفر الـ GraphQL الخاص بسبوتيفاي الأصلي
+    // الـ Payload المطابق للأداة
     const searchPayload = {
       variables: {
         query: String(query),
@@ -62,93 +64,59 @@ module.exports = async (req, res) => {
       }
     };
 
-    // إرسال الطلب عبر Axios
+    // إرسال الطلب عبر Axios بسعة انتظار 12 ثانية
     const searchRes = await axios({
       method: 'post',
-      url: 'https://open.spotify.com/track/19SMfAEj99Y7lkdmB07P4V5',
+      url: url,
       data: searchPayload,
       headers: headers,
-      timeout: 10000
+      timeout: 12000
     });
 
+    // سحب مصفوفة العناصر بناءً على الفرز الناجح للأداة
     const items = searchRes.data?.data?.searchV2?.topResultsV2?.itemsV2 || [];
     
     if (items.length === 0) {
       return res.status(404).json({
         success: false,
         creator: "By Arab Top Dev",
-        error: "لم يعثر سيرفر سبوتيفاي على أي نتائج مطابقة للبحث."
+        error: "لم يعثر سيرفر سبوتيفاي على نتائج لهذا البحث."
       });
     }
 
-    let trackId = null;
-    let extractedData = null;
+    // إمساك بيانات العنصر الأول (أفضل تطابق)
+    const firstItem = items[0]?.item?.data;
 
-    // معالجة داتا الـ JSON المسترجعة وفك الـ URIs بدقة
-    for (const itemHit of items) {
-      const data = itemHit.item?.data;
-      if (data && data.uri) {
-        const parts = data.uri.split(':');
-        const type = parts[1]; // track أو album أو playlist
-        const id = parts[2] || data.id;
-
-        if (!id) continue;
-
-        // توليد الرابط المباشر للموقع الأصلي هندسياً
-        const webUrl = `https://open.spotify.com/$${type}/${id}`;
-
-        // لو النتيجة أغنية، نأخذ الـ ID الخاص بها فوراً لأجل الكلمات
-        if (type === 'track' && !trackId) {
-          trackId = id;
-        }
-
-        // حفظ الداتا الأساسية لأول نتيجة تظهر كأفضل تطابق
-        if (!extractedData) {
-          extractedData = {
-            id: id,
-            type: type,
-            title: data.name || "بدون عنوان",
-            url: webUrl,
-            thumbnail: data.albumOfTrack?.coverArt?.sources?.[0]?.url || data.images?.items?.[0]?.sources?.[0]?.url || ""
-          };
-        }
-      }
-    }
-
-    if (!extractedData) {
+    if (!firstItem) {
       return res.status(404).json({
         success: false,
         creator: "By Arab Top Dev",
-        error: "فشل استخراج معرفات التراك من السورس بنجاح."
+        error: "فشل قراءة تفاصيل النتيجة الأولى من المصفوفة."
       });
     }
 
-    // --- جلب الكلمات (Lyrics) بناءً على معرف الأغنية المستخرجة دلالياً ---
-    let lyricsText = "لم يتم العثور على كلمات.";
+    // تفكيك الـ URI برمجياً لمعرفة النوع والـ ID (نفس نظام البايثون)
+    const uri = firstItem.uri || "";
+    const uriParts = uri ? uri.split(':') : [];
     
-    if (trackId) {
-      const lyricsUrl = `https://open.spotify.com/track/19SMfAEj99Y7lkdmB07P4V6${trackId}?format=json&vocalRemoval=false`;
-      try {
-        const lyricsRes = await axios.get(lyricsUrl, { headers, timeout: 8000 });
-        const lines = lyricsRes.data?.lyrics?.lines || [];
-        if (lines.length > 0) {
-          lyricsText = lines.map(line => line.words).join('\n');
-        } else {
-          lyricsText = "التراك لا يحتوي على كلمات نصية بالمصدر الأصلي.";
-        }
-      } catch (e) {
-        lyricsText = "❌ لا تتوفر كلمات نصية رسمية لهذا التراك في قاعدة بيانات سبوتيفاي حالياً.";
-      }
-    } else {
-      lyricsText = `ℹ️ النتيجة المستخرجة تصنيفها (${extractedData.type})، لا تملك كلمات لعرضها.`;
-    }
+    const itemType = uriParts[1] || "track";
+    const itemId = firstItem.id || uriParts[2] || "";
 
-    // الرد النهائي المطابق لهندسة الـ API الخاص بموقعك وبوتك
+    // استخراج رابط صورة الغلاف بدقة وتفادي الـ undefined
+    const thumbnail = firstItem.albumOfTrack?.coverArt?.sources?.[0]?.url || 
+                      firstItem.images?.items?.[0]?.sources?.[0]?.url || "";
+
+    // الرد النهائي الجاهز للبوت واللوحة
     return res.status(200).json({
       success: true,
       creator: "By Arab Top Dev",
-      result: extractedData,
-      lyrics: lyricsText
+      result: {
+        id: itemId,
+        type: itemType,
+        title: firstItem.name || "بدون عنوان",
+        url: `https://open.spotify.com/track/3svMa5SZw4lzLmtUlWHDh7`,
+        thumbnail: thumbnail
+      }
     });
 
   } catch (error) {
@@ -156,7 +124,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({
       success: false,
       creator: "By Arab Top Dev",
-      error: error.message || 'حدث خطأ داخلي أثناء معالجة طلب Vercel'
+      error: error.message || 'حدث خطأ داخلي في السيرفر أثناء جلب البيانات'
     });
   }
 };
